@@ -14,13 +14,12 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
     def send(self, message):
         self.channel.basic_publish(exchange='', routing_key=self.queue_name, body=message)
 
-    def start_consuming(self, callback):
+    def start_consuming(self, on_message_callback):
         def on_message(ch, method, properties, body):
             ack = lambda: ch.basic_ack(delivery_tag=method.delivery_tag)
             nack = lambda: ch.basic_nack(delivery_tag=method.delivery_tag)
 
-            callback(body, ack, nack)
-
+            on_message_callback(body, ack, nack)
 
         self.channel.basic_consume(queue=self.queue_name, on_message_callback=on_message, auto_ack=False)
         self.channel.start_consuming()
@@ -34,4 +33,18 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
 class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
     
     def __init__(self, host, exchange_name, routing_keys):
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
+        self.channel = self.connection.channel()
+        self.channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+    
+    def send():
         pass
+
+    def start_consuming(self, on_message_callback):
+        pass
+
+    def stop_consuming(self):
+        pass
+
+    def close(self):
+        self.connection.close()
