@@ -35,16 +35,32 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
     def __init__(self, host, exchange_name, routing_keys):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
         self.channel = self.connection.channel()
-        self.channel.exchange_declare(exchange=exchange_name, exchange_type='fanout')
+        self.channel.exchange_declare(exchange=exchange_name, exchange_type='direct')
+        self.exchange_name = exchange_name
+        self.routing_keys = routing_keys
     
-    def send():
-        pass
+    def send(self, message):
+        for routing_key in self.routing_keys:
+            self.channel.basic_publish(exchange=self.exchange_name, routing_key=routing_key, body=message)
 
     def start_consuming(self, on_message_callback):
-        pass
+        result = self.channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+
+        for routing_key in self.routing_keys:
+            self.channel.queue_bind(exchange=self.exchange_name, queue=queue_name, routing_key=routing_key)
+
+        def on_message(ch, method, properties, body):
+            ack = lambda: ch.basic_ack(delivery_tag=method.delivery_tag)
+            nack = lambda: ch.basic_nack(delivery_tag=method.delivery_tag)
+
+            on_message_callback(body, ack, nack)
+
+        self.channel.basic_consume(queue=queue_name, on_message_callback=on_message, auto_ack=False)
+        self.channel.start_consuming()
 
     def stop_consuming(self):
-        pass
+        self.channel.stop_consuming()
 
     def close(self):
         self.connection.close()
