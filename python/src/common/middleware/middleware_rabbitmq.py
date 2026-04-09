@@ -4,6 +4,8 @@ import string
 from .middleware import MessageMiddlewareQueue, MessageMiddlewareExchange
 from .middleware import MessageMiddlewareMessageError, MessageMiddlewareDisconnectedError, MessageMiddlewareCloseError, MessageMiddlewareDeleteError
 
+PREFETCH_COUNT = 3
+
 class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
 
     def __init__(self, host, queue_name):
@@ -30,6 +32,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
 
                 on_message_callback(body, ack, nack)
 
+            self.channel.basic_qos(prefetch_count=PREFETCH_COUNT)
             self.channel.basic_consume(queue=self.queue_name, on_message_callback=on_message, auto_ack=False)
             self.channel.start_consuming()
         except pika.exceptions.AMQPConnectionError:
@@ -83,6 +86,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
 
                 on_message_callback(body, ack, nack)
 
+            self.channel.basic_qos(prefetch_count=PREFETCH_COUNT)
             self.channel.basic_consume(queue=queue_name, on_message_callback=on_message, auto_ack=False)
             self.channel.start_consuming()
         except pika.exceptions.AMQPConnectionError:
